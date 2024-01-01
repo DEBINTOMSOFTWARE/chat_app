@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,13 +19,33 @@ class _AuthScreenState extends State<AuthScreen> {
   var _enteredEmail = '';
   var _enteredPassword = '';
 
-  void _submit() {
-     final isValid = _form.currentState!.validate();
+  void _submit() async {
+    final isValid = _form.currentState!.validate();
 
-    if (isValid) {
-      _form.currentState!.save();
-      print(_enteredEmail);
-      print(_enteredPassword);
+    if (!isValid) {
+      return;
+    }
+
+    _form.currentState!.save();
+
+    try {
+      if (_isLogin) {
+        final userCredentials = await _firebase.signInWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
+        print('Login Creds : $userCredentials');
+      } else {
+        final userCredentials = await _firebase.createUserWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
+        print('SignUp Creds : $userCredentials');
+      }
+    } on FirebaseAuthException catch (error) {
+      print('Auth error : ${error.message}');
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'Authentication failed.'),
+        ),
+      );
     }
   }
 
@@ -62,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             autocorrect: false,
                             textCapitalization: TextCapitalization.none,
                             validator: (value) {
-                               if (value == null ||
+                              if (value == null ||
                                   value.trim().isEmpty ||
                                   !value.contains('@')) {
                                 return 'Please enter a valid email address.';
@@ -70,7 +93,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
                               return null;
                             },
-                             onSaved: (value) {
+                            onSaved: (value) {
                               _enteredEmail = value!;
                             },
                           ),
@@ -79,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 const InputDecoration(labelText: 'Password'),
                             obscureText: true,
                             validator: (value) {
-                               if (value == null || value.trim().length < 6) {
+                              if (value == null || value.trim().length < 6) {
                                 return 'Password must be at least 6 characters long.';
                               }
                               return null;
